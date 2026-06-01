@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//Applications/Google Chrome.app/Contents/MacOS/**)",
+      "Bash(mdfind -name \"Google Chrome\")",
+      "Bash(pip3 list *)",
+      "Bash(.venv/bin/pip3 install *)",
+      "Read(//Users/Shared/**)",
+      "Bash(ln *)",
+      "Bash(python3 *)",
+      "Bash(/Applications/Google Chrome.app/Contents/MacOS/Google Chrome *)",
+      "Bash(pip3 install *)",
+      "Bash(curl -L \"https://storage.googleapis.com/chrome-for-public-public/147.0.7727.116/mac64/chromedriver-mac64.zip\" -o /tmp/chromedriver-147.zip)",
+      "Read(//private/tmp/**)",
+      "Bash(unzip -o chromedriver-147.zip)",
+      "Bash(curl *)",
+      "Bash(unzip -o /tmp/chromedriver-147.zip -d /tmp/)",
+      "Read(//tmp/chromedriver-mac64/**)",
+      "Bash(osascript *)",
+      "Bash(pip list *)",
+      "Bash(sort -k9 -r)",
+      "Bash(ps -o pid,stat,%cpu,%mem,command -p 90196)",
+      "Bash(venv/bin/pip install *)",
+      "Bash(venv/bin/python runAiBot.py)",
+      "Bash(./venv/bin/python *)",
+      "Bash(./myenv/bin/python *)"
+    ]
+  }
+}

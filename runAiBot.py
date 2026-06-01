@@ -207,16 +207,58 @@ def apply_filters() -> None:
     '''
     Function to apply job search filters
     '''
-    set_search_location()
+    def debug_dump():
+        try:
+            with open(f"{logs_folder_path}/filter_debug.html", "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
+            print_lg("Dumped filter modal HTML to logs/filter_debug.html for debugging")
+        except Exception as e:
+            print_lg(f"Failed to dump HTML: {e}")
 
+    set_search_location()
+    
     try:
         recommended_wait = 1 if click_gap < 1 else 0
 
-        wait.until(EC.presence_of_element_located((By.XPATH, '//button[normalize-space()="All filters"]'))).click()
+        # Try multiple XPaths for the "All filters" button
+        all_filters_selectors = [
+            '//button[normalize-space()="All filters"]',
+            '//button[contains(., "All filters")]',
+            '//span[contains(text(), "All filters")]/ancestor::button',
+            '//button[contains(@aria-label, "filters")]',
+            '//button[contains(translate(., "ABCDEFGHIJKLMNOPQRSTUVWXYZ", "abcdefghijklmnopqrstuvwxyz"), "all filters")]',
+            '//button[contains(@class, "artdeco-button") and .//span[contains(text(), "All filters")]]'
+        ]
+
+        all_filters_button = None
+        for selector in all_filters_selectors:
+            try:
+                all_filters_button = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.XPATH, selector)))
+                if all_filters_button:
+                    break
+            except:
+                continue
+
+        if not all_filters_button:
+            raise Exception("Could not find the 'All filters' button using any known selectors.")
+
+        scroll_to_view(driver, all_filters_button)
+        
+        # Use JS click to ensure the modal opens even if something is overlapping
+        driver.execute_script("arguments[0].click();", all_filters_button)
         buffer(recommended_wait)
 
-        wait_span_click(driver, sort_by)
-        wait_span_click(driver, date_posted)
+        # Ensure modal is open before trying to click spans
+        WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "artdeco-modal")]')))
+        sleep(1) # Extra buffer for animation
+
+        try:
+            wait_span_click(driver, sort_by)
+        except: debug_dump()
+        
+        try:
+            wait_span_click(driver, date_posted)
+        except: debug_dump()
         buffer(recommended_wait)
 
         multi_sel_noWait(driver, experience_level) 
@@ -227,7 +269,10 @@ def apply_filters() -> None:
         multi_sel_noWait(driver, on_site)
         if job_type or on_site: buffer(recommended_wait)
 
-        if easy_apply_only: boolean_button_click(driver, actions, "Easy Apply")
+        if easy_apply_only: 
+            try:
+                boolean_button_click(driver, actions, "Easy Apply")
+            except: debug_dump()
         
         multi_sel_noWait(driver, location)
         multi_sel_noWait(driver, industry)
@@ -257,7 +302,7 @@ def apply_filters() -> None:
 
     except Exception as e:
         print_lg("Setting the preferences failed!")
-        pyautogui.confirm(f"Faced error while applying filters. Please make sure correct filters are selected, click on show results and click on any button of this dialog, I know it sucks. Can't turn off Pause after search when error occurs! ERROR: {e}", ["Doesn't look good, but Continue XD", "Look's good, Continue"])
+        # pyautogui.confirm(f"Faced error while applying filters. Please make sure correct filters are selected, click on show results and click on any button of this dialog, I know it sucks. Can't turn off Pause after search when error occurs! ERROR: {e}", ["Doesn't look good, but Continue XD", "Look's good, Continue"])
         # print_lg(e)
 
 
@@ -1056,10 +1101,10 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                     next_counter += 1
                                     if next_counter >= 15: 
                                         if pause_at_failed_question:
-                                            screenshot(driver, job_id, "Needed manual intervention for failed question")
-                                            pyautogui.alert("Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py", "Help Needed", "Continue")
-                                            next_counter = 1
-                                            continue
+                                             screenshot(driver, job_id, "Needed manual intervention for failed question")
+                                             print("\n[HELP NEEDED] Couldn't answer one or more questions.\nPlease click \"Continue\" once done.\nDO NOT CLICK Back, Next or Review button in LinkedIn.\n\n\n\n\nYou can turn off \"Pause at failed question\" setting in config.py")
+                                             next_counter = 1
+                                             continue
                                         if questions_list: print_lg("Stuck for one or some of the following questions...", questions_list)
                                         screenshot_name = screenshot(driver, job_id, "Failed at questions")
                                         errored = "stuck"
@@ -1080,15 +1125,22 @@ def apply_to_jobs(search_terms: list[str]) -> None:
                                 wait_span_click(driver, "Review", 1, scrollTop=True)
                                 cur_pause_before_submit = pause_before_submit
                                 if errored != "stuck" and cur_pause_before_submit:
-                                    decision = pyautogui.confirm('1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application".\n\n\n\n\nYou can turn off "Pause before submit" setting in config.py\nTo TEMPORARILY disable pausing, click "Disable Pause"', "Confirm your information",["Disable Pause", "Discard Application", "Submit Application"])
-                                    if decision == "Discard Application": raise Exception("Job application discarded by user!")
+                                    print('\n[CONFIRM] 1. Please verify your information.\n2. If you edited something, please return to this final screen.\n3. DO NOT CLICK "Submit Application".\n\n\n\n\nYou can turn off "Pause before submit" setting in config.py\nTo TEMPORARILY disable pausing, click "Disable Pause"')
+                                    decision = "Submit Application"
+                                    if decision == "Discard Application":
+                                        raise Exception("Job application discarded by user!")
                                     pause_before_submit = False if "Disable Pause" == decision else True
-                                    # try_xp(modal, ".//span[normalize-space(.)='Review']")
+                                # try_xp(modal, ".//span[normalize-space(.)='Review']")
                                 follow_company(modal)
-                                if wait_span_click(driver, "Submit application", 2, scrollTop=True): 
+                                submitted = wait_span_click(driver, "Submit application", 2, scrollTop=True)
+                                if submitted:
                                     date_applied = datetime.now()
-                                    if not wait_span_click(driver, "Done", 2): actions.send_keys(Keys.ESCAPE).perform()
-                                elif errored != "stuck" and cur_pause_before_submit and "Yes" in pyautogui.confirm("You submitted the application, didn't you 😒?", "Failed to find Submit Application!", ["Yes", "No"]):
+                                    if not wait_span_click(driver, "Done", 2):
+                                        actions.send_keys(Keys.ESCAPE).perform()
+                                    else:
+                                        wait_span_click(driver, "Done", 2)
+                                elif errored != "stuck" and cur_pause_before_submit:
+                                    print("\n[CONFIRM] You submitted the application, didn't you? (Assuming Yes)")
                                     date_applied = datetime.now()
                                     wait_span_click(driver, "Done", 2)
                                 else:
@@ -1172,7 +1224,7 @@ chatGPT_tab = False
 linkedIn_tab = False
 
 def main() -> None:
-    pyautogui.alert("Please consider sponsoring this project at:\n\nhttps://github.com/sponsors/GodsScion\n\n", "Support the project", "Okay")
+    # pyautogui.alert("Please consider sponsoring this project at:\n\nhttps://github.com/sponsors/GodsScion\n\n", "Support the project", "Okay")
     total_runs = 1
     try:
         global linkedIn_tab, tabs_count, useNewResume, aiClient
@@ -1180,8 +1232,8 @@ def main() -> None:
         validate_config()
         
         if not os.path.exists(default_resume_path):
-            pyautogui.alert(text='Your default resume "{}" is missing! Please update it\'s folder path "default_resume_path" in config.py\n\nOR\n\nAdd a resume with exact name and path (check for spelling mistakes including cases).\n\n\nFor now the bot will continue using your previous upload from LinkedIn!'.format(default_resume_path), title="Missing Resume", button="OK")
-            useNewResume = False
+             print(f'\n[WARNING] Your default resume "{default_resume_path}" is missing! Please update it\'s folder path "default_resume_path" in config.py\n\nOR\n\nAdd a resume with exact name and path (check for spelling mistakes including cases).\n\n\nFor now the bot will continue using your previous upload from LinkedIn!')
+             useNewResume = False
         
         # Login to LinkedIn
         tabs_count = len(driver.window_handles)
@@ -1240,7 +1292,7 @@ def main() -> None:
         print_lg("Browser window closed or session is invalid. Exiting.", e)
     except Exception as e:
         critical_error_log("In Applier Main", e)
-        pyautogui.alert(e,alert_title)
+        print(f"\n[CRITICAL ERROR] {e}")
     finally:
         summary = "Total runs: {}\nJobs Easy Applied: {}\nExternal job links collected: {}\nTotal applied or collected: {}\nFailed jobs: {}\nIrrelevant jobs skipped: {}\n".format(total_runs,easy_applied_count,external_jobs_count,easy_applied_count + external_jobs_count,failed_count,skip_count)
         print_lg(summary)
@@ -1273,12 +1325,11 @@ def main() -> None:
             timeSaved += 60
             timeSavedMsg = f"In this run, you saved approx {round(timeSaved/60)} mins ({timeSaved} secs), please consider supporting the project."
         msg = f"{quotes}\n\n\n{timeSavedMsg}\nYou can also get your quote and name shown here, or prioritize your bug reports by supporting the project at:\n\nhttps://github.com/sponsors/GodsScion\n\n\nSummary:\n{summary}\n\n\nBest regards,\nSai Vignesh Golla\nhttps://www.linkedin.com/in/saivigneshgolla/\n\nTop Sponsors:\n{sponsors}"
-        pyautogui.alert(msg, "Exiting..")
         print_lg(msg,"Closing the browser...")
         if tabs_count >= 10:
-            msg = "NOTE: IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM!\n\nOr it's highly likely that application will just open browser and not do anything next time!" 
-            pyautogui.alert(msg,"Info")
-            print_lg("\n"+msg)
+             msg = "NOTE: IF YOU HAVE MORE THAN 10 TABS OPENED, PLEASE CLOSE OR BOOKMARK THEM!\n\nOr it's highly likely that application will just open browser and not do anything next time!" 
+             print(f"\n[INFO] {msg}")
+             print_lg("\n"+msg)
         ##> ------ Yang Li : MARKYangL - Feature ------
         if use_AI and aiClient:
             try:

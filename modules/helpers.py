@@ -26,7 +26,7 @@ from time import sleep
 from random import randint
 from datetime import datetime, timedelta
 from pyautogui import alert
-from pprint import pprint
+from typing import Optional, Union
 
 from config.settings import logs_folder_path
 
@@ -67,7 +67,7 @@ def get_default_temp_profile() -> str:
     return str(home / "Library" / "Application Support" / "Google" / "Chrome" / "auto-job-apply-profile")
 
 
-def find_default_profile_directory() -> str | None:
+def find_default_profile_directory() -> Optional[str]:
     '''
     Dynamically finds the default Google Chrome 'User Data' directory path
     across Windows, macOS, and Linux, regardless of OS version.
