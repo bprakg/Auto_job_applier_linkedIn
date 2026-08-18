@@ -3,7 +3,10 @@ Author:     Sai Vignesh Golla
 LinkedIn:   https://www.linkedin.com/in/saivigneshgolla/
 
 Copyright (c) 2024-2026 Sai Vignesh Golla
+Copyright (c) 2024-2026 Sai Vignesh Golla
 
+License:    MIT License
+            https://opensource.org/license/mit
 License:    MIT License
             https://opensource.org/license/mit
             
