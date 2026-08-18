@@ -2,10 +2,10 @@
 Author:     Sai Vignesh Golla
 LinkedIn:   https://www.linkedin.com/in/saivigneshgolla/
 
-Copyright (C) 2024 Sai Vignesh Golla
+Copyright (c) 2024-2026 Sai Vignesh Golla
 
-License:    GNU Affero General Public License
-            https://www.gnu.org/licenses/agpl-3.0.en.html
+License:    MIT License
+            https://opensource.org/license/mit
             
 GitHub:     https://github.com/GodsScion/Auto_job_applier_linkedIn
 
@@ -136,7 +136,6 @@ cover_letter = ""
 user_information_all ="""
 User Information
 """
-##<
 '''
 Note: If left empty as "", the tool will not answer the question. However, note that some companies make it compulsory to be answered. Use \n to add line breaks.
 ''' 
@@ -191,4 +190,9 @@ Your support, whether through donations big or small or simply spreading the wor
 Gratefully yours 🙏🏻,
 Sai Vignesh Golla
 '''
+
+# --- Load user settings saved by the local control panel (user_config.json).
+# --- No-op if that file is absent: values fall back to the defaults above.
+from config import _overrides as _o
+_o.apply(__name__, globals())
 ############################################################################################################
